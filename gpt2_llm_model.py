@@ -119,8 +119,13 @@ class GPT2LLMSystem:
             else:
                 full_prompt = prompt
 
-            # 토큰화
-            inputs = self.tokenizer.encode(full_prompt, return_tensors="pt", max_length=512, truncation=True)
+            # 토큰화 (입력 길이 제한)
+            inputs = self.tokenizer.encode(
+                full_prompt,
+                return_tensors="pt",
+                max_length=400,  # 입력을 400토큰으로 제한해서 생성 공간 확보
+                truncation=True
+            )
             inputs = inputs.to(self.device)
 
             # 어텐션 마스크 생성
@@ -131,13 +136,14 @@ class GPT2LLMSystem:
                 outputs = self.model.generate(
                     inputs,
                     attention_mask=attention_mask,
-                    max_length=min(len(inputs[0]) + 150, self.max_length),
+                    max_new_tokens=150,  # max_length 대신 max_new_tokens 사용
                     temperature=temperature,
                     top_p=top_p,
                     num_return_sequences=num_return_sequences,
                     pad_token_id=self.tokenizer.eos_token_id,
                     do_sample=True,
-                    repetition_penalty=1.1
+                    repetition_penalty=1.1,
+                    eos_token_id=self.tokenizer.eos_token_id
                 )
 
             # 결과 디코딩
