@@ -41,28 +41,28 @@ def setup_complete_system(text_file_path: str, collection_name: str = "my_docume
     print("시스템 설정 완료!\n")
 
     # 3단계: 시스템 테스트
-    print("=== 시스템 테스트 ===")
-    test_queries = [
-        "이 문서의 주요 내용을 요약해주세요",
-        "가장 중요한 정보는 무엇인가요?",
-        "이 내용에 대해 질문이 있습니다"
-    ]
-
-    for i, query in enumerate(test_queries, 1):
-        print(f"\n테스트 {i}: {query}")
-        print("-" * 50)
-
-        # 관련 문서 검색
-        search_results = vector_creator.search_similar_documents(query, n_results=2)
-        if search_results.get('documents'):
-            print("검색된 관련 문서:")
-            for j, doc in enumerate(search_results['documents'][0]):
-                print(f"  {j + 1}. {doc[:100]}...")
-
-        # LLM 응답 생성
-        response = llm_system.generate_response(query, use_context=True)[0]
-        print(f"\nAI 응답: {response}")
-        print("=" * 80)
+    # print("=== 시스템 테스트 ===")
+    # test_queries = [
+    #     "이 문서의 주요 내용을 요약해주세요",
+    #     "가장 중요한 정보는 무엇인가요?",
+    #     "이 내용에 대해 질문이 있습니다"
+    # ]
+    #
+    # for i, query in enumerate(test_queries, 1):
+    #     print(f"\n테스트 {i}: {query}")
+    #     print("-" * 50)
+    #
+    #     # 관련 문서 검색
+    #     search_results = vector_creator.search_similar_documents(query, n_results=2)
+    #     if search_results.get('documents'):
+    #         print("검색된 관련 문서:")
+    #         for j, doc in enumerate(search_results['documents'][0]):
+    #             print(f"  {j + 1}. {doc[:100]}...")
+    #
+    #     # LLM 응답 생성
+    #     response = llm_system.generate_response(query, use_context=True)[0]
+    #     print(f"\nAI 응답: {response}")
+    #     print("=" * 80)
 
     # 4단계: 대화형 모드
     print("\n=== 대화형 모드 시작 ===")
