@@ -11,7 +11,7 @@ warnings.filterwarnings('ignore')
 
 class GPT2LLMSystem:
     def __init__(self,
-                 model_name: str = "gpt2",
+                 model_name: str = "skt/kogpt2-base-v2",  # 한국어 GPT-2 모델 사용
                  db_path: str = "./chroma_db",
                  collection_name: str = "my_documents",
                  max_length: int = 512):
@@ -19,7 +19,7 @@ class GPT2LLMSystem:
         GPT-2 기반 LLM 시스템 초기화
 
         Args:
-            model_name: 사용할 GPT-2 모델 이름
+            model_name: 사용할 GPT-2 모델 이름 (한국어 모델로 변경)
             db_path: ChromaDB 경로
             collection_name: 사용할 컬렉션 이름
             max_length: 생성할 최대 토큰 길이
@@ -30,8 +30,16 @@ class GPT2LLMSystem:
 
         # GPT-2 모델 및 토크나이저 로드
         print(f"GPT-2 모델 로딩 중... ({model_name})")
-        self.tokenizer = GPT2Tokenizer.from_pretrained(model_name)
-        self.model = GPT2LMHeadModel.from_pretrained(model_name)
+        try:
+            # 한국어 GPT-2 모델 시도
+            self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+            self.model = AutoModelForCausalLM.from_pretrained(model_name)
+        except:
+            # 실패시 영어 GPT-2 모델로 폴백
+            print("한국어 모델 로드 실패, 기본 GPT-2 모델을 사용합니다.")
+            model_name = "gpt2"
+            self.tokenizer = GPT2Tokenizer.from_pretrained(model_name)
+            self.model = GPT2LMHeadModel.from_pretrained(model_name)
 
         # 패딩 토큰 설정
         if self.tokenizer.pad_token is None:
@@ -92,7 +100,7 @@ class GPT2LLMSystem:
     def generate_response(self,
                           prompt: str,
                           use_context: bool = True,
-                          temperature: float = 0.7,
+                          temperature: float = 0.8,
                           top_p: float = 0.9,
                           num_return_sequences: int = 1) -> List[str]:
         """
@@ -110,20 +118,27 @@ class GPT2LLMSystem:
         """
         try:
             # 관련 컨텍스트 검색 및 추가
+            context = ""
             if use_context and self.collection:
-                context = self.search_relevant_context(prompt)
-                if context:
-                    full_prompt = f"Context: {context}\n\nQuestion: {prompt}\nAnswer:"
-                else:
-                    full_prompt = f"Question: {prompt}\nAnswer:"
+                context = self.search_relevant_context(prompt, n_results=2)
+
+            # 프롬프트 구성 개선
+            if context:
+                full_prompt = f"""다음은 참고 자료입니다:
+{context}
+
+질문: {prompt}
+답변:"""
             else:
-                full_prompt = prompt
+                # 기본 한국어 프롬프트 템플릿
+                full_prompt = f"""질문: {prompt}
+답변:"""
 
             # 토큰화 (입력 길이 제한)
             inputs = self.tokenizer.encode(
                 full_prompt,
                 return_tensors="pt",
-                max_length=400,  # 입력을 400토큰으로 제한해서 생성 공간 확보
+                max_length=300,  # 더 짧게 제한해서 생성 공간 확보
                 truncation=True
             )
             inputs = inputs.to(self.device)
@@ -131,33 +146,51 @@ class GPT2LLMSystem:
             # 어텐션 마스크 생성
             attention_mask = torch.ones(inputs.shape, device=self.device)
 
-            # 텍스트 생성
+            # 텍스트 생성 파라미터 개선
             with torch.no_grad():
                 outputs = self.model.generate(
                     inputs,
                     attention_mask=attention_mask,
-                    max_new_tokens=150,  # max_length 대신 max_new_tokens 사용
+                    max_new_tokens=100,  # 더 짧게 생성
                     temperature=temperature,
                     top_p=top_p,
+                    top_k=50,  # top_k 추가로 품질 개선
                     num_return_sequences=num_return_sequences,
                     pad_token_id=self.tokenizer.eos_token_id,
                     do_sample=True,
-                    repetition_penalty=1.1,
-                    eos_token_id=self.tokenizer.eos_token_id
+                    repetition_penalty=1.2,  # 반복 방지 강화
+                    eos_token_id=self.tokenizer.eos_token_id,
+                    early_stopping=True,  # 조기 종료 활성화
+                    no_repeat_ngram_size=3  # 3-gram 반복 방지
                 )
 
-            # 결과 디코딩
+            # 결과 디코딩 및 정리
             responses = []
             for output in outputs:
                 # 원본 프롬프트 제거하고 생성된 부분만 추출
                 generated_text = self.tokenizer.decode(output[len(inputs[0]):], skip_special_tokens=True)
-                responses.append(generated_text.strip())
+
+                # 텍스트 정리
+                generated_text = generated_text.strip()
+
+                # 불완전한 문장 제거
+                if generated_text:
+                    # 첫 번째 완전한 문장만 추출
+                    sentences = generated_text.split('.')
+                    if len(sentences) > 1 and sentences[0].strip():
+                        generated_text = sentences[0].strip() + '.'
+
+                    # 너무 짧은 응답 필터링
+                    if len(generated_text.strip()) < 10:
+                        generated_text = "죄송합니다. 적절한 답변을 생성하지 못했습니다."
+
+                responses.append(generated_text if generated_text else "답변을 생성할 수 없습니다.")
 
             return responses
 
         except Exception as e:
             print(f"텍스트 생성 중 오류: {e}")
-            return ["오류가 발생했습니다."]
+            return ["죄송합니다. 답변 생성 중 오류가 발생했습니다."]
 
     def chat(self):
         """대화형 채팅 인터페이스"""
