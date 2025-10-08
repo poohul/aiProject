@@ -25,7 +25,7 @@ login_payload = {
 }
 
 
-def makePageNum():
+def makePageNum(pageNum):
     print(f"로그인 시도: {LOGIN_URL} ...")
     try:
         response = session.post(LOGIN_URL, data=login_payload)
@@ -51,7 +51,8 @@ def makePageNum():
                 # board_url = f"{BASE_URL}/board/list.do" # 예시 게시판 URL, 실제 URL로 변경하세요.
 
                 # board_url = "https://km.kyobodts.co.kr/bbs/bbsFinder.do?method=listView&coid=156&ctid=321" #공지사항 게시판 분해 체크중
-                board_url = " https://km.kyobodts.co.kr/bbs/bbsFinder.do?method=list&coid=156&ctid=321"
+                # board_url = " https://km.kyobodts.co.kr/bbs/bbsFinder.do?method=list&coid=156&ctid=321"
+                board_url = "https://km.kyobodts.co.kr/bbs/bbsFinder.do?method=list&coid=156&ctid=321&page="+str(pageNum)
                 board_response = session.get(board_url)
                 # print(board_response.content.decode('utf-8'))
 
@@ -97,19 +98,20 @@ def captBoard(pagenNum):
             print("=" * 50)
             print("게시판 내용 추출 결과")
             print("=" * 50)
-
-            for key, value in result.items():
-                if key == '첨부파일':
-                    print(f"\n{key}:")
-                    for idx, file_info in enumerate(value, 1):
-                        print(f"  [{idx}] {file_info.get('파일명', '')} {file_info.get('파일크기', '')}")
-                elif key == '본문':
-                    print(f"\n{key}:")
-                    print("-" * 50)
-                    print(clean_text(value))
-                    print("-" * 50)
-                else:
-                    print(f"{key}: {value}")
+            
+            #임시주석
+            # for key, value in result.items():
+            #     if key == '첨부파일':
+            #         print(f"\n{key}:")
+            #         for idx, file_info in enumerate(value, 1):
+            #             print(f"  [{idx}] {file_info.get('파일명', '')} {file_info.get('파일크기', '')}")
+            #     elif key == '본문':
+            #         print(f"\n{key}:")
+            #         print("-" * 50)
+            #         print(clean_text(value))
+            #         print("-" * 50)
+            #     else:
+            #         print(f"{key}: {value}")
 
             return result
 
@@ -322,10 +324,17 @@ if __name__ == "__main__":
 
     #global pdate
     #게시글 번호 가져오기
-    totPg = makePageNum();
+    addTot = []
+    for i in range(1,50):
+     totPg = makePageNum(i)
+     addTot = addTot + totPg
 
-    for i in range(0, len(totPg)):
-        data = captBoard(totPg[i])
+     unique_list = list(set(addTot))
+
+    print(unique_list)
+
+    for i in range(0, len(unique_list)):
+        data = captBoard(unique_list[i])
         fileNm = ptype + "_" + pdate[:10]+".txt"
         cleaned_data = clean_newlines(data)
         # 파일 경로 생성

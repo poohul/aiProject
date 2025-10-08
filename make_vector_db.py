@@ -1,6 +1,7 @@
 # make_vector_db.py
 import os
-from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_huggingface import HuggingFaceEmbeddings # 변경된 import 문
+# from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_community.vectorstores import Chroma
 
 def load_texts_from_folder(folder_path):
@@ -28,7 +29,7 @@ def create_vector_db(folder_path, persist_dir="./chroma_db2"):
 
     print("💾 Saving Chroma vector DB...")
     db = Chroma.from_texts(texts, embeddings, persist_directory=persist_dir)
-    db.persist()
+    # db.persist()
     print(f"✅ Vector DB saved to {persist_dir}")
 
 if __name__ == "__main__":
