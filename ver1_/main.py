@@ -94,7 +94,7 @@ def create_sample_text_file():
     지속적인 연구와 개발을 통해 더욱 발전시켜 나가야 할 기술입니다.
     """
 
-    with open("sample.txt", "w", encoding="utf-8") as f:
+    with open("../sample.txt", "w", encoding="utf-8") as f:
         f.write(sample_content.strip())
     print("샘플 텍스트 파일 'sample.txt'가 생성되었습니다.")
 
@@ -113,7 +113,7 @@ if __name__ == "__main__":
         if not text_file_path:
             use_sample = input("샘플 파일을 생성하시겠습니까? (y/n): ").lower()
             if use_sample in ['y', 'yes', '예']:
-                text_file_path = "sample.txt"
+                text_file_path = "../sample.txt"
                 create_sample_text_file()
                 break
             else:

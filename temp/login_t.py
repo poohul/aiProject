@@ -48,13 +48,14 @@ try:
 
             print(f"\n게시판 페이지 접근 시도: {board_url} ...")
             board_response = session.get(board_url)
+           # board_response = requests.get(board_url)
             print(f"게시판 요청 상태 코드: {board_response.status_code}")
 
             if board_response.status_code == 200:
                 print("게시판 페이지 접근 성공!")
                 # 게시판 페이지의 HTML 내용을 출력하거나 BeautifulSoup으로 파싱할 수 있습니다.
-                print(board_response.text[:1000]) # 처음 1000자만 출력
-
+                #print(board_response.text[:1000]) # 처음 1000자만 출력
+                print(board_response.content.decode('utf-8'))
                 # BeautifulSoup을 사용한 파싱 예시 (BeautifulSoup4 설치 필요: pip install beautifulsoup4)
                 from bs4 import BeautifulSoup
                 soup = BeautifulSoup(board_response.text, 'html.parser')

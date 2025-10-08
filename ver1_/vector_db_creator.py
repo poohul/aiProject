@@ -168,7 +168,7 @@ def main():
     vector_db = VectorDBCreator()
 
     # 텍스트 파일 읽기
-    file_path = "sample.txt"  # 실제 파일 경로로 변경하세요
+    file_path = "../sample.txt"  # 실제 파일 경로로 변경하세요
     text_content = vector_db.read_text_file(file_path)
 
     if text_content:
