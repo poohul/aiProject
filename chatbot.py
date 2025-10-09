@@ -14,7 +14,8 @@ def main():
     db = load_vector_db()
     retriever = db.as_retriever(search_kwargs={"k": 3})
 
-    llm = Ollama(model="llama3.1:8b")
+    # llm = Ollama(model="llama3.1:8b") # pc 에서 개발 버전
+    llm = Ollama(model="llama3.2:3b") #노트북 사양 문제로 낮은 모델 사용 아.. 너무 멍청한데..
     qa = RetrievalQA.from_chain_type(llm=llm, retriever=retriever)
 
     while True:
