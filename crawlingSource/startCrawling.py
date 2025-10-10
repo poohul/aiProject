@@ -25,7 +25,7 @@ login_payload = {
 }
 
 
-def makePageNum(pageNum):
+def makePageNum(pageNum,ctid):
     print(f"로그인 시도: {LOGIN_URL} ...")
     try:
         response = session.post(LOGIN_URL, data=login_payload)
@@ -52,7 +52,7 @@ def makePageNum(pageNum):
 
                 # board_url = "https://km.kyobodts.co.kr/bbs/bbsFinder.do?method=listView&coid=156&ctid=321" #공지사항 게시판 분해 체크중
                 # board_url = " https://km.kyobodts.co.kr/bbs/bbsFinder.do?method=list&coid=156&ctid=321"
-                board_url = "https://km.kyobodts.co.kr/bbs/bbsFinder.do?method=list&coid=156&ctid=321&page="+str(pageNum)
+                board_url = "https://km.kyobodts.co.kr/bbs/bbsFinder.do?method=list&coid=156&ctid="+ctid+"&page="+str(pageNum)
                 board_response = session.get(board_url)
                 # print(board_response.content.decode('utf-8'))
 
@@ -62,8 +62,8 @@ def makePageNum(pageNum):
                     # rows가 존재하는지 확인
                     if 'rows' in data and data['rows']:
                         doc_numbers = [row['docNumber'] for row in data['rows']]
-                        print(f"추출된 docNumber: {doc_numbers}")
-                        print(f"총 개수: {len(doc_numbers)}")
+                        # print(f"추출된 docNumber: {doc_numbers}")
+                        # print(f"총 개수: {len(doc_numbers)}")
                     else:
                         print("rows 데이터가 없습니다")
                         doc_numbers = []
@@ -76,9 +76,11 @@ def makePageNum(pageNum):
 
     return doc_numbers
 
-def captBoard(pagenNum):
+def captBoard(pagenNum,ctid,bbs_Id):
     #board_url = "https://km.kyobodts.co.kr/bbs/bbs.do?method=get&coid=156&ctid=321&bbsId=B0000111&docNumber=12202"  # 예시 게시판 URL, 실제 URL로 변경하세요.
-    board_url = "https://km.kyobodts.co.kr/bbs/bbs.do?method=get&coid=156&ctid=321&bbsId=B0000111&docNumber="+str(pagenNum)  # 예시 게시판 URL, 실제 URL로 변경하세요.
+    # board_url = "https://km.kyobodts.co.kr/bbs/bbs.do?method=get&coid=156&ctid=321&bbsId=B0000111&docNumber="+str(pagenNum)  # 예시 게시판 URL, 실제 URL로 변경하세요.
+    board_url = "https://km.kyobodts.co.kr/bbs/bbs.do?method=get&coid=156&ctid="+ctid+"&bbsId="+bbs_Id+"&docNumber=" + str(
+        pagenNum)  # 예시 게시판 URL, 실제 URL로 변경하세요.
     print(f"\n게시판 페이지 접근 시도: {board_url} ...")
     board_response = session.get(board_url)
     # board_response = requests.get(board_url)
@@ -317,30 +319,50 @@ def makeTxt(cleaned_data,filepath):
 
 if __name__ == "__main__":
     #게시판 타입
-    global ptype
+    # 게시판 토탈 페이지
+
+    bbs_Id = "B0000002"  #추출하고 싶은 게시판 입력 이후 다른 변수 자동 셋팅됨
+    boardTotalPg = 50;
+    ctid = "321"  # 공지 기본 id
     ptype = "공지"
+
+
+    if bbs_Id == "B0000001":
+        ptype = "공지"
+        boardTotalPg = 50
+        ctid = "321"  # 공지 기본 id
+    elif bbs_Id == "B0000002":
+        ptype = "회사소식"
+        boardTotalPg = 68
+        ctid = "172"  # 회사소식 id
+    else:
+        ptype = "공지"
+
     script_dir = Path(__file__).parent.parent
-    data_dir = script_dir / "data"
+    data_dir = script_dir / "data" / ptype
+
+    # 폴더 자동 생성
+    os.makedirs(data_dir, exist_ok=True)
+
+    print(data_dir)
 
     #global pdate
     #게시글 번호 가져오기
+    # 임시주석 하단 풀면 정상
     addTot = []
-    for i in range(1,50):
-     totPg = makePageNum(i)
-     addTot = addTot + totPg
-
-     unique_list = list(set(addTot))
-
-    print(unique_list)
-
+    # for i in range(1,boardTotalPg):
+    #  totPg = makePageNum(i,ctid)
+    #  addTot = addTot + totPg
+    #  unique_list = list(set(addTot))
+    #  print(f"총 개수: {len(unique_list)}")
+    
+    # 템프 로긴후 지정 번호만 크롤링
+    # response = session.post(LOGIN_URL, data=login_payload)
+    # unique_list = [4110,4109,4108,4107,4106]
     for i in range(0, len(unique_list)):
-        data = captBoard(unique_list[i])
+        data = captBoard(unique_list[i],ctid,bbs_Id)
         fileNm = ptype + "_" + pdate[:10]+".txt"
         cleaned_data = clean_newlines(data)
         # 파일 경로 생성
         filepath = data_dir / fileNm
         makeTxt(cleaned_data,filepath)
-
-    #f.close()
-    #print(f"파일이름:{fileNm}")
-    #print(f"최종결과: {data}")

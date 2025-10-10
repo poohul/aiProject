@@ -3,9 +3,16 @@ from langchain_community.vectorstores import Chroma
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain.chains import RetrievalQA
 from langchain_community.llms import Ollama
+from commonUtil.timeCheck import logging_time
+
+@logging_time
+def get_answer(qa, query):
+    """답변 생성 (시간 측정용)"""
+    return qa.run(query)
 
 def load_vector_db(persist_dir="./chroma_db2"):
-    embeddings = HuggingFaceEmbeddings(model_name="jhgan/ko-sroberta-multitask")
+    # embeddings = HuggingFaceEmbeddings(model_name="jhgan/ko-sroberta-multitask")
+    embeddings = HuggingFaceEmbeddings(model_name="upskyy/gte-base-korean")
     db = Chroma(persist_directory=persist_dir, embedding_function=embeddings)
     return db
 
@@ -14,8 +21,8 @@ def main():
     db = load_vector_db()
     retriever = db.as_retriever(search_kwargs={"k": 3})
 
-    # llm = Ollama(model="llama3.1:8b") # pc 에서 개발 버전
-    llm = Ollama(model="llama3.2:3b") #노트북 사양 문제로 낮은 모델 사용 아.. 너무 멍청한데..
+    llm = Ollama(model="llama3.1:8b") # pc 에서 개발 버전
+    # llm = Ollama(model="llama3.2:3b") #노트북 사양 문제로 낮은 모델 사용 아.. 너무 멍청한데..
     qa = RetrievalQA.from_chain_type(llm=llm, retriever=retriever)
 
     while True:
@@ -23,7 +30,9 @@ def main():
             query = input("\n🗨️ 질문: ").strip()
             if not query:
                 continue
-            answer = qa.run(query)
+            # answer = qa.run(query)
+            answer = get_answer(qa, query)
+
             print(f"\n💡 답변: {answer}")
         except KeyboardInterrupt:
             print("\n👋 종료합니다.")
