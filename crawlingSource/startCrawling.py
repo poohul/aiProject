@@ -4,6 +4,7 @@ from bs4 import BeautifulSoup
 import re
 import os
 from pathlib import Path
+from commonUtil.timeCheck import logging_time
 
 # --- 설정 정보 ---
 BASE_URL = "https://km.kyobodts.co.kr"  # 실제 사이트 URL로 변경하세요. (http 또는 https 확인)
@@ -11,7 +12,7 @@ LOGIN_URL = f"{BASE_URL}/j_spring_security_check"
 
 YOUR_USERNAME = "jby1303"  # 여기에 실제 로그인 아이디 입력
 YOUR_PASSWORD = "dbswlsqo22@"  # 여기에 실제 로그인 비밀번호 입력
-
+# YOUR_PASSWORD = "dbswlsqo22@1"  # 여기에 실제 로그인 비밀번호 입력
 # --- requests.Session() 사용 ---
 # requests.Session()을 사용하면 로그인 후 생성되는 쿠키(세션 정보)를
 # 자동으로 관리해 주어, 로그인 상태를 유지하면서 다른 페이지에 접근할 수 있습니다.
@@ -26,53 +27,26 @@ login_payload = {
 
 
 def makePageNum(pageNum,ctid):
-    print(f"로그인 시도: {LOGIN_URL} ...")
-    try:
-        response = session.post(LOGIN_URL, data=login_payload)
-        # --- 로그인 성공 여부 확인 ---
-        # 로그인 성공 여부는 웹사이트마다 다르게 판단해야 합니다.
-        # 일반적으로는 HTTP 상태 코드, 특정 리다이렉션, 또는 응답 HTML 내의 특정 텍스트를 확인합니다.
+    # board_url = "https://km.kyobodts.co.kr/bbs/bbsFinder.do?method=listView&coid=156&ctid=321" #공지사항 게시판 분해 체크중
+    # board_url = " https://km.kyobodts.co.kr/bbs/bbsFinder.do?method=list&coid=156&ctid=321"
+    board_url = "https://km.kyobodts.co.kr/bbs/bbsFinder.do?method=list&coid=156&ctid="+ctid+"&page="+str(pageNum)
+    board_response = session.get(board_url)
+    # print(board_response.content.decode('utf-8'))
 
-        print(f"로그인 요청 상태 코드: {response.status_code}")
+    if board_response.status_code == 200:
+        data = board_response.json()
 
-        if response.status_code == 200:
-            # 200 OK가 떨어졌다고 무조건 성공은 아닙니다.
-            # 로그인 실패 시에도 200 OK를 반환하면서 로그인 페이지로 다시 돌아가는 경우가 많습니다.
-            if "로그인 실패" in response.text or "비밀번호가 일치하지 않습니다" in response.text:
-                print("로그인 실패: 응답 내용에 실패 메시지가 포함되어 있습니다.")
-                # 실패한 경우의 응답 HTML을 확인하여 디버깅하세요.
-                # print(response.text)
-            else:
-                print("로그인 성공! (추정)")
-                print(f"현재 URL: {response.url}")  # 로그인 성공 후 이동된 URL 확인
-
-                # --- 로그인 성공 후 게시판 URL 호출 (예시) ---
-                # 이제 'session' 객체를 사용하여 로그인된 상태로 다른 페이지에 접근할 수 있습니다.
-                # board_url = f"{BASE_URL}/board/list.do" # 예시 게시판 URL, 실제 URL로 변경하세요.
-
-                # board_url = "https://km.kyobodts.co.kr/bbs/bbsFinder.do?method=listView&coid=156&ctid=321" #공지사항 게시판 분해 체크중
-                # board_url = " https://km.kyobodts.co.kr/bbs/bbsFinder.do?method=list&coid=156&ctid=321"
-                board_url = "https://km.kyobodts.co.kr/bbs/bbsFinder.do?method=list&coid=156&ctid="+ctid+"&page="+str(pageNum)
-                board_response = session.get(board_url)
-                # print(board_response.content.decode('utf-8'))
-
-                if board_response.status_code == 200:
-                    data = board_response.json()
-
-                    # rows가 존재하는지 확인
-                    if 'rows' in data and data['rows']:
-                        doc_numbers = [row['docNumber'] for row in data['rows']]
-                        # print(f"추출된 docNumber: {doc_numbers}")
-                        # print(f"총 개수: {len(doc_numbers)}")
-                    else:
-                        print("rows 데이터가 없습니다")
-                        doc_numbers = []
-                else:
-                    print(f"요청 실패: {response.status_code}")
-                    doc_numbers = []
-
-    except requests.exceptions.RequestException as e:
-        print(f"요청 중 오류 발생: {e}")
+        # rows가 존재하는지 확인
+        if 'rows' in data and data['rows']:
+            doc_numbers = [row['docNumber'] for row in data['rows']]
+            # print(f"추출된 docNumber: {doc_numbers}")
+            # print(f"총 개수: {len(doc_numbers)}")
+        else:
+            print("rows 데이터가 없습니다")
+            doc_numbers = []
+    else:
+        print(f"요청 실패: {board_response.status_code}")
+        doc_numbers = []
 
     return doc_numbers
 
@@ -146,7 +120,7 @@ def captBoard(pagenNum,ctid,bbs_Id):
             if "로그인 실패" in response.text or "비밀번호가 일치하지 않습니다" in response.text:
                 print("로그인 실패: 응답 내용에 실패 메시지가 포함되어 있습니다.")
                 # 실패한 경우의 응답 HTML을 확인하여 디버깅하세요.
-                # print(response.text)
+                print(response.text)
             else:
                 print("로그인 성공! (추정)")
                 print(f"현재 URL: {response.url}")  # 로그인 성공 후 이동된 URL 확인
@@ -316,18 +290,46 @@ def makeTxt(cleaned_data,filepath):
     print(f"파일 저장 완료: {filepath}")
     return filepath
 
+def login():
+    print(f"로그인 시도: {LOGIN_URL} ...")
+    result = True
+    try:
+        response = session.post(LOGIN_URL, data=login_payload)
+        # --- 로그인 성공 여부 확인 ---
+        # 로그인 성공 여부는 웹사이트마다 다르게 판단해야 합니다.
+        # 일반적으로는 HTTP 상태 코드, 특정 리다이렉션, 또는 응답 HTML 내의 특정 텍스트를 확인합니다.
 
-if __name__ == "__main__":
-    #게시판 타입
+        print(f"로그인 요청 상태 코드: {response.status_code}")
+
+        if response.status_code == 200:
+            # 200 OK가 떨어졌다고 무조건 성공은 아닙니다.
+            # 로그인 실패 시에도 200 OK를 반환하면서 로그인 페이지로 다시 돌아가는 경우가 많습니다.
+            if "로그인이 실패하였습니다" in response.text or "비밀번호가 일치하지 않습니다" in response.text:
+                print("로그인 실패: 응답 내용에 실패 메시지가 포함되어 있습니다.")
+                # 실패한 경우의 응답 HTML을 확인하여 디버깅하세요.
+                # print(response.text)
+                result = False
+            else:
+                print("로그인 성공! (추정)")
+                print(f"현재 URL: {response.url}")  # 로그인 성공 후 이동된 URL 확인
+                result = True
+    except requests.exceptions.RequestException as e:
+        print(f"요청 중 오류 발생: {e}")
+
+    return result
+
+@logging_time
+def crawllingStart():
+    # 게시판 타입
     # 게시판 토탈 페이지
-
-    bbs_Id = "B0000002"  #추출하고 싶은 게시판 입력 이후 다른 변수 자동 셋팅됨
+    if(login()!=True):
+        return
+    bbs_Id = "B0000004"  # 추출하고 싶은 게시판 입력 이후 다른 변수 자동 셋팅됨
     boardTotalPg = 50;
     ctid = "321"  # 공지 기본 id
     ptype = "공지"
 
-
-    if bbs_Id == "B0000001":
+    if bbs_Id == "B0000111":
         ptype = "공지"
         boardTotalPg = 50
         ctid = "321"  # 공지 기본 id
@@ -335,6 +337,10 @@ if __name__ == "__main__":
         ptype = "회사소식"
         boardTotalPg = 68
         ctid = "172"  # 회사소식 id
+    elif bbs_Id == "B0000004":
+        ptype = "사우소식"
+        boardTotalPg = 36
+        ctid = "164"  # 회사소식 id
     else:
         ptype = "공지"
 
@@ -346,23 +352,29 @@ if __name__ == "__main__":
 
     print(data_dir)
 
-    #global pdate
-    #게시글 번호 가져오기
+    # global pdate
+    # 게시글 번호 가져오기
     # 임시주석 하단 풀면 정상
     addTot = []
-    # for i in range(1,boardTotalPg):
-    #  totPg = makePageNum(i,ctid)
-    #  addTot = addTot + totPg
-    #  unique_list = list(set(addTot))
-    #  print(f"총 개수: {len(unique_list)}")
-    
+    for i in range(1,boardTotalPg):
+     totPg = makePageNum(i,ctid)
+     addTot = addTot + totPg
+     unique_list = list(set(addTot))
+     print(f"총 개수: {len(unique_list)}")
+
     # 템프 로긴후 지정 번호만 크롤링
     # response = session.post(LOGIN_URL, data=login_payload)
     # unique_list = [4110,4109,4108,4107,4106]
     for i in range(0, len(unique_list)):
-        data = captBoard(unique_list[i],ctid,bbs_Id)
-        fileNm = ptype + "_" + pdate[:10]+".txt"
+        data = captBoard(unique_list[i], ctid, bbs_Id)
+        fileNm = ptype + "_" + pdate[:10] + ".txt"
         cleaned_data = clean_newlines(data)
         # 파일 경로 생성
         filepath = data_dir / fileNm
-        makeTxt(cleaned_data,filepath)
+        makeTxt(cleaned_data, filepath)
+
+
+if __name__ == "__main__":
+    crawllingStart()
+
+

@@ -1,47 +1,71 @@
 # make_vector_db.py
 import os
+import json
+from pathlib import Path
+from tqdm import tqdm
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.vectorstores import Chroma
-from tqdm import tqdm
-# from timeCheck import logging_time
+from langchain.schema import Document
 from commonUtil.timeCheck import logging_time
 
-def load_texts_from_folder(folder_path):
-    texts = []
 
-    # 1단계: 모든 txt 파일 경로 수집
+def extract_text_from_file(file_path: str) -> str:
+    """파일을 읽어 JSON이면 변환, 아니면 그대로 텍스트 리턴"""
+    with open(file_path, "r", encoding="utf-8") as f:
+        content = f.read().strip()
+
+    if not content:
+        return ""
+    # global date
+    if content.startswith("{") and content.endswith("}"):
+        try:
+            data = json.loads(content)
+            title = data.get("제목", "")
+            body = data.get("본문", "")
+            author = data.get("게시자", "")
+            date = data.get("게시일시", "")
+
+            text = f"제목: {title}\n내용: {body}\n게시자: {author}\n게시일시: {date}"
+            return text.strip() , date
+        except Exception:
+            return content
+    else:
+        return content
+
+
+def load_documents_from_folder(folder_path: str):
+    """폴더 내 모든 txt 파일을 Document 객체 리스트로 로드"""
+    documents = []
+
     print("🔍 Scanning for .txt files...")
-    all_txt_files = []
-    for root, dirs, files in os.walk(folder_path):
-        # 특정 폴더 제외 (선택사항)
-        dirs[:] = [d for d in dirs if d not in ['.git', '__pycache__', 'node_modules', '.venv']]
-
-        for filename in files:
-            if filename.lower().endswith(".txt"):
-                file_path = os.path.join(root, filename)
-                all_txt_files.append(file_path)
+    all_txt_files = [
+        os.path.join(root, f)
+        for root, _, files in os.walk(folder_path)
+        for f in files if f.lower().endswith(".txt")
+    ]
 
     if not all_txt_files:
-        return texts
+        print("⚠️ No .txt files found.")
+        return documents
 
     print(f"📊 Found {len(all_txt_files)} .txt files\n")
 
-    # 2단계: 진행률 표시하며 파일 읽기
-    for file_path in tqdm(all_txt_files, desc="📖 Loading files", unit="file"):
+    for file_path in tqdm(all_txt_files, desc="📖 Loading & parsing files", unit="file"):
         try:
-            with open(file_path, "r", encoding="utf-8") as f:
-                content = f.read().strip()
-                if content:
-                    texts.append(content)
-                    # 상대 경로 표시
-                    rel_path = os.path.relpath(file_path, folder_path)
-                    tqdm.write(f"  ✅ {rel_path} ({len(content)} chars)")
+            text,date = extract_text_from_file(file_path)
+            if text:
+                # 메타에 날짜 명시
+                doc = Document(page_content=text, metadata={"source": file_path,"date": date})
+                documents.append(doc)
+                rel_path = os.path.relpath(file_path, folder_path)
+                tqdm.write(f"  ✅ {rel_path} ({len(text)} chars)")
+            else:
+                tqdm.write(f"  ⚠️ Empty file skipped: {file_path}")
         except Exception as e:
-            rel_path = os.path.relpath(file_path, folder_path)
-            tqdm.write(f"  ⚠️ Error reading {rel_path}: {e}")
+            tqdm.write(f"  ❌ Error reading {file_path}: {e}")
 
-    print(f"\n✨ Successfully loaded: {len(texts)}/{len(all_txt_files)} files")
-    return texts
+    print(f"\n✨ Successfully loaded: {len(documents)}/{len(all_txt_files)} files")
+    return documents
 
 
 @logging_time
@@ -51,23 +75,32 @@ def create_vector_db(folder_path, persist_dir="./chroma_db2"):
     print(f"💾 Vector DB will be saved to: {persist_dir}")
     print(f"{'=' * 60}\n")
 
-    texts = load_texts_from_folder(folder_path)
+    documents = load_documents_from_folder(folder_path)
 
-    if not texts:
-        print("⚠️ No .txt files found or loaded. Aborting.")
-        return
+    if not documents:
+        print("⚠️ No valid .txt or JSON files found. Aborting.")
+        return None
+
+    avg_length = sum(len(doc.page_content) for doc in documents) / len(documents)
+    print(f"📊 Average text length: {avg_length:.1f} chars")
 
     print("\n🔍 Creating embeddings (this may take a while)...")
-    # embeddings = HuggingFaceEmbeddings(model_name="jhgan/ko-sroberta-multitask")
-    embeddings = HuggingFaceEmbeddings(model_name="upskyy/gte-base-korean")
+    embeddings = HuggingFaceEmbeddings(
+        model_name="upskyy/gte-base-korean",
+        model_kwargs={'trust_remote_code': True}
+    )
+
     print("💾 Saving to Chroma vector DB...")
-    db = Chroma.from_texts(texts, embeddings, persist_directory=persist_dir)
+    db = Chroma.from_documents(documents, embeddings, persist_directory=persist_dir)
+    # db.persist()
 
     print(f"\n{'=' * 60}")
     print(f"✅ Vector DB successfully created!")
     print(f"📍 Location: {persist_dir}")
-    print(f"📊 Total documents: {len(texts)}")
+    print(f"📊 Total documents: {len(documents)}")
+    print(f"📈 Average text length: {avg_length:.1f} chars")
     print(f"{'=' * 60}")
+    return db
 
 
 if __name__ == "__main__":
