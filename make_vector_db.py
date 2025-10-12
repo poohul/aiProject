@@ -9,7 +9,7 @@ from langchain.schema import Document
 from commonUtil.timeCheck import logging_time
 
 
-def extract_text_from_file(file_path: str) -> str:
+def extract_text_from_file(file_path: str) -> dict:
     """파일을 읽어 JSON이면 변환, 아니면 그대로 텍스트 리턴"""
     with open(file_path, "r", encoding="utf-8") as f:
         content = f.read().strip()
@@ -26,6 +26,13 @@ def extract_text_from_file(file_path: str) -> str:
             date = data.get("게시일시", "")
 
             text = f"제목: {title}\n내용: {body}\n게시자: {author}\n게시일시: {date}"
+
+            return {
+                "text": text.strip(),
+                "date": date,
+                "title": title,
+            }
+
             return text.strip() , date , title
         except Exception:
             return content
@@ -52,7 +59,13 @@ def load_documents_from_folder(folder_path: str):
 
     for file_path in tqdm(all_txt_files, desc="📖 Loading & parsing files", unit="file"):
         try:
-            text,date ,title = extract_text_from_file(file_path)
+            # text,date ,title = extract_text_from_file(file_path)
+            result = extract_text_from_file(file_path) #데이터 타입 변경
+
+            text = result["text"]
+            date = result["date"]
+            title = result["title"]
+
             if text:
                 # 메타에 날짜 명시
                 doc = Document(page_content=text, metadata={"source": file_path,"date": date,"title":title})
