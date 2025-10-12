@@ -26,7 +26,7 @@ def extract_text_from_file(file_path: str) -> str:
             date = data.get("게시일시", "")
 
             text = f"제목: {title}\n내용: {body}\n게시자: {author}\n게시일시: {date}"
-            return text.strip() , date
+            return text.strip() , date , title
         except Exception:
             return content
     else:
@@ -52,10 +52,10 @@ def load_documents_from_folder(folder_path: str):
 
     for file_path in tqdm(all_txt_files, desc="📖 Loading & parsing files", unit="file"):
         try:
-            text,date = extract_text_from_file(file_path)
+            text,date ,title = extract_text_from_file(file_path)
             if text:
                 # 메타에 날짜 명시
-                doc = Document(page_content=text, metadata={"source": file_path,"date": date})
+                doc = Document(page_content=text, metadata={"source": file_path,"date": date,"title":title})
                 documents.append(doc)
                 rel_path = os.path.relpath(file_path, folder_path)
                 tqdm.write(f"  ✅ {rel_path} ({len(text)} chars)")
