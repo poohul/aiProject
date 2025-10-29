@@ -1,6 +1,6 @@
-# Project Title
+# 교보디티에스 사내게시판 검색 챗봇 프로그램
 
-One Paragraph of project description goes here
+교보디티에스 사내게시판 내용을 검색기반 챗봇 프로그램
 
 ## Getting Started
 
