@@ -2,9 +2,9 @@
 
 교보디티에스 사내게시판 내용을 검색기반 챗봇 프로그램
 
-## Getting Started
+## 실생방법
 
-These instructions will get you a copy of the project up and running on your local machine for development and testing purposes. See deployment for notes on how to deploy the project on a live system.
+소스를 다운받은후 콘솔내에서 pip install -r requirements.txt 실행을 통한 필요 한 관련라이브러리 다운로드 
 
 ### Prerequisites
 
