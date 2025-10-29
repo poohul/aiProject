@@ -4,7 +4,12 @@
 
 ## 준비
 
-소스를 다운받은후 콘솔내에서 pip install -r requirements.txt 실행을 통한 필요 한 관련라이브러리 다운로드 
+소스를 다운받은후 
+
+```
+ pip install -r requirements.txt 
+```
+콘솔내에서 해당 문장 실행하요 관련라이브러리 다운로드 
 
 ### 구조
 
