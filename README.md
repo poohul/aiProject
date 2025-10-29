@@ -6,7 +6,7 @@
 
 소스를 다운받은후 콘솔내에서 pip install -r requirements.txt 실행을 통한 필요 한 관련라이브러리 다운로드 
 
-### Prerequisites
+### 구조
 
 What things you need to install the software and how to install them
 
