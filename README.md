@@ -34,56 +34,22 @@ vectorDbTest/
 ## 흐름도
  게시판 크롤링 -> 백터db 생성 -> 검색 -> llm 모델 전송 -> 리턴 
 
-## Running the tests
 
-Explain how to run the automated tests for this system
-
-### Break down into end to end tests
-
-Explain what these tests test and why
-
+## 실제실행 예제 
+ 1. startCrawling.py 
+``` 
+  bbs_Id = "B0000004"  # 추출하고 싶은 게시판 입력 이후 다른 변수 자동 셋팅됨
+  boardTotalPg = 50; # 추출하고 싶은 페이지 만큼 입력 
 ```
-Give an example
-```
+원하는 게시판 과 페이지 수 입력 하고 실행
 
-### And coding style tests
+파일 생성 확인 
+<img width="436" height="215" alt="image" src="https://github.com/user-attachments/assets/555533e9-647c-4bd9-b7bb-3c9de85a5edf" />
 
-Explain what these tests test and why
+2.make_vector_db.py 실행
+ 벡터 디비 생성 확인 
+ <img width="549" height="117" alt="image" src="https://github.com/user-attachments/assets/e231071e-8a98-407a-bf2e-7aa08945c91a" />
 
-```
-Give an example
-```
-
-## Deployment
-
-Add additional notes about how to deploy this on a live system
-
-## Built With
-
-* [Dropwizard](http://www.dropwizard.io/1.0.2/docs/) - The web framework used
-* [Maven](https://maven.apache.org/) - Dependency Management
-* [ROME](https://rometools.github.io/rome/) - Used to generate RSS Feeds
-
-## Contributing
-
-Please read [CONTRIBUTING.md](https://gist.github.com/PurpleBooth/b24679402957c63ec426) for details on our code of conduct, and the process for submitting pull requests to us.
-
-## Versioning
-
-We use [SemVer](http://semver.org/) for versioning. For the versions available, see the [tags on this repository](https://github.com/your/project/tags). 
-
-## Authors
-
-* **Billie Thompson** - *Initial work* - [PurpleBooth](https://github.com/PurpleBooth)
-
-See also the list of [contributors](https://github.com/your/project/contributors) who participated in this project.
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details
-
-## Acknowledgments
-
-* Hat tip to anyone whose code was used
-* Inspiration
-* etc
+3.chatbot.py 실행 
+ 질문 프롬프트 뜨면 정상
+<img width="892" height="356" alt="image" src="https://github.com/user-attachments/assets/bc31a238-b3a9-49ff-9a2c-cc7515d5fb8f" />
