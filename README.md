@@ -31,23 +31,8 @@ vectorDbTest/
 ```
 
 
-### Installing
-
-A step by step series of examples that tell you how to get a development env running
-
-Say what the step will be
-
-```
-Give the example
-```
-
-And repeat
-
-```
-until finished
-```
-
-End with an example of getting some data out of the system or using it for a little demo
+### 흐름도
+ 게시판 크롤링 -> 백터db 생성 -> 검색 -> llm 모델 전송 -> 리턴 
 
 ## Running the tests
 
