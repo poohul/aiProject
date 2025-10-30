@@ -44,12 +44,15 @@ vectorDbTest/
 원하는 게시판 과 페이지 수 입력 하고 실행
 
 파일 생성 확인 
+
 <img width="436" height="215" alt="image" src="https://github.com/user-attachments/assets/555533e9-647c-4bd9-b7bb-3c9de85a5edf" />
 
 2.make_vector_db.py 실행
  벡터 디비 생성 확인 
+ 
  <img width="549" height="117" alt="image" src="https://github.com/user-attachments/assets/e231071e-8a98-407a-bf2e-7aa08945c91a" />
 
 3.chatbot.py 실행 
  질문 프롬프트 뜨면 정상
+ 
 <img width="892" height="356" alt="image" src="https://github.com/user-attachments/assets/bc31a238-b3a9-49ff-9a2c-cc7515d5fb8f" />
