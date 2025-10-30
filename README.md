@@ -9,11 +9,20 @@
 ```
  pip install -r requirements.txt 
 ```
-콘솔내에서 해당 문장 실행하요 관련라이브러리 다운로드 
+콘솔내에서 해당 문장 실행하여 관련라이브러리 다운로드 
 
 ### 구조
 
-What things you need to install the software and how to install them
+vectorDbTest/
+├── chatbot.py                # 게시판 문서를 분석·검색하는 AI 챗봇 메인 로직
+├── make_vector_db.py         # 텍스트 데이터를 벡터화하여 ChromaDB에 저장하는 스크립트
+│
+├── commonUtil/
+│   └── timeCheck.py          # 실행 시간, 성능 측정 등 유틸리티 함수
+│
+├── crawlingSource/
+│   └── startCrawling.py      # 회사 게시판 내용 크롤링하는 스크립트
+│
 
 ```
 Give examples
