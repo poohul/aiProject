@@ -2,6 +2,8 @@
 
 교보디티에스 사내게시판 내용을 검색기반 챗봇 프로그램
 
+
+
 ## 준비
 
 1. 관련 소스 다운로드 
@@ -15,6 +17,8 @@
 2.모델 다운로드 
 https://ollama.com/  --> 해당 모델 다운로드
 * 로컬서버에서 구동 된다.
+
+
 
 ## 구조
 
@@ -36,8 +40,10 @@ vectorDbTest/
 ```
 
 
+
 ## 흐름도
  게시판 크롤링 -> 백터db 생성 -> 검색 -> llm 모델 전송 -> 리턴 
+
 
 
 ## 실제실행 예제 
@@ -61,6 +67,7 @@ vectorDbTest/
  질문 프롬프트 뜨면 정상
  
 <img width="892" height="356" alt="image" src="https://github.com/user-attachments/assets/bc31a238-b3a9-49ff-9a2c-cc7515d5fb8f" />
+
 
 
 ## 사용모델 
