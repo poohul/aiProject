@@ -4,12 +4,17 @@
 
 ## 준비
 
+1. 관련 소스 다운로드 
 소스를 다운받은후 
 
 ```
  pip install -r requirements.txt 
 ```
 콘솔내에서 해당 문장 실행하여 관련라이브러리 다운로드 
+
+2.모델 다운로드 
+https://ollama.com/  --> 해당 모델 다운로드
+* 로컬서버에서 구동 된다.
 
 ## 구조
 
@@ -56,3 +61,17 @@ vectorDbTest/
  질문 프롬프트 뜨면 정상
  
 <img width="892" height="356" alt="image" src="https://github.com/user-attachments/assets/bc31a238-b3a9-49ff-9a2c-cc7515d5fb8f" />
+
+
+## 사용모델 
+벡터디비생성 
+```
+embeddings = HuggingFaceEmbeddings(model_name="jhgan/ko-sroberta-multitask")
+```
+llm 모델
+```
+llm = Ollama(
+        model="llama3.2:3b",
+    #   model="llama3.1:8b")  # 고사양 pc 용 모델 
+    )
+```
