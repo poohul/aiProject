@@ -17,18 +17,19 @@
 vectorDbTest/
 ├── chatbot.py # 게시판 문서를 분석·검색하는 AI 챗봇 메인 로직
 ├── make_vector_db.py # 텍스트 데이터를 벡터화하여 ChromaDB에 저장하는 스크립트
+├── chroma_db2/ # 벡터디비 생성폴더
 │
 ├── commonUtil/
 │ └── timeCheck.py # 실행 시간, 성능 측정 등 유틸리티 함수
 │
 ├── crawlingSource/
 │ └── startCrawling.py # 회사 게시판 등 외부 소스에서 문서를 크롤링하는 스크립트
-│
+├── data/
+│ └── 공지/ # 사내 공지사항 게시판 크롤링파일 보관폴더
+│ └── 사우소식/ # 사내 사우소식 게시판 크롤링파일 보관폴더
+│ └── 회사소식/ # 사내 회사소식 게시판 크롤링파일 보관폴더
 ```
 
-```
-Give examples
-```
 
 ### Installing
 
