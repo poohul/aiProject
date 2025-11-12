@@ -60,22 +60,45 @@ def load_vector_db(persist_dir: str = DB_FOLDER):
 
 
 # ---------- LLM 로드 ----------
-def load_llm():
-    # temperature 낮게 해서 추측 줄임
+def load_llm(gpu_acceleration: bool = False):
+    """
+    LLM을 로드합니다. GPU 가속 옵션에 따라 최적의 파라미터를 사용합니다.
+    """
+    model_name = "llama3.1:8b"
+
+    config_params = {
+        "temperature": 0.0,
+        "model": model_name
+    }
+
+    if gpu_acceleration:
+        # 💡 GPU 사용 시 성능 최적화를 위한 파라미터 추가
+        # num_gpu: 사용할 GPU 개수 (1개 사용을 명시)
+        # mirostat: 샘플링 전략을 켜서 성능과 품질을 개선 (선택 사항)
+        config_params.update({
+            "num_gpu": 1,
+            "mirostat": 2  # Mirostat 샘플링 v2 적용
+        })
+        print(f"🚀 GPU 가속 옵션 활성화: {model_name}")
+    else:
+        # CPU 사용 시: 메모리 사용량 및 추론 속도를 고려한 기본 설정 유지
+        print(f"💻 CPU 모드 활성화: {model_name}")
+
     try:
-        return OllamaLLM(model="llama3.1:8b", temperature=0.0)
+        return OllamaLLM(**config_params)
     except TypeError:
-        # 일부 래퍼는 키워드명이 다를 수 있어 positional fallback
-        return OllamaLLM("llama3.1:8b")
+        # 래퍼 버전 차이로 인한 키워드 에러 방지 (fallback)
+        return OllamaLLM(model=model_name, temperature=0.0)
 
 
 # ---------- QA 체인 생성 ----------
-def create_qa_chain():
+def create_qa_chain(gpu_acceleration: bool = False):
     db = load_vector_db()
 
     # retriever는 기본 k=10 설정만 가진 상태로 생성
     retriever = db.as_retriever(search_kwargs={"k": V_Kwargs})
-    llm = load_llm()
+    # llm = load_llm()
+    llm = load_llm(gpu_acceleration=gpu_acceleration)
 
     # (map_prompt, combine_prompt 생략 - 기존과 동일)
     map_prompt = PromptTemplate(
@@ -251,7 +274,8 @@ def get_answer(qa, db, query: str):
     final_prompt = PROMPT_TEMPLATE.format(context=context, question=query)
 
     # LLM에 직접 질문
-    llm = load_llm()
+    # llm = load_llm()
+    llm = load_llm(gpu_acceleration=use_gpu)
     try:
         response = llm.invoke(final_prompt)
         return response, docs
@@ -262,7 +286,12 @@ def get_answer(qa, db, query: str):
 # ---------- 메인 (기존과 동일) ----------
 def main():
     print("🤖 게시판 기반 챗봇 (Ctrl+C 로 종료)\n")
-    qa, db, retriever = create_qa_chain()
+    global use_gpu
+    # 사용자로부터 GPU 가속 여부를 입력받는 로직 추가
+    use_gpu_input = input("💡 GPU 가속을 사용하시겠습니까? (y/n): ").strip().lower()
+    use_gpu = use_gpu_input == 'y'
+    qa, db, retriever = create_qa_chain(gpu_acceleration=use_gpu)
+    # qa, db, retriever = create_qa_chain()
 
     while True:
         try:
