@@ -284,9 +284,25 @@ def clean_newlines(data):
         # return data
     return data
 
-def makeTxt(cleaned_data,filepath):
-    with  open(filepath, "w",encoding="utf-8") as f:
-        json.dump(cleaned_data, f , indent="\t", ensure_ascii=False)
+def makeTxt(cleaned_data, filepath_base):
+    """
+    파일 경로와 기본 이름(확장자 제외)을 받아,
+    파일이 존재할 경우 순번을 붙여 저장하고, 최종 파일 경로를 반환합니다.
+    """
+    filepath = Path(filepath_base + ".txt")
+    counter = 1
+
+    # 파일이 이미 존재하는지 확인하고, 존재하면 순번을 붙여 새로운 파일 경로 생성
+    while filepath.exists():
+        # 파일 경로를 '/data/공지/공지_2025-11-12_1.txt' 등으로 변경
+        filepath = Path(f"{filepath_base}_{counter}.txt")
+        counter += 1
+
+    with open(filepath, "w", encoding="utf-8") as f:
+        # 파일 저장 시 '게시일시'의 시분초는 파일 이름에 포함하지 않기 위해
+        # cleaned_data 자체를 파일에 저장합니다.
+        json.dump(cleaned_data, f, indent="\t", ensure_ascii=False)
+
     print(f"파일 저장 완료: {filepath}")
     return filepath
 
@@ -324,14 +340,15 @@ def crawllingStart():
     # 게시판 토탈 페이지
     if(login()!=True):
         return
-    bbs_Id = "B0000004"  # 추출하고 싶은 게시판 입력 이후 다른 변수 자동 셋팅됨
+    bbs_Id = "B0000111"  # 추출하고 싶은 게시판 입력 이후 다른 변수 자동 셋팅됨
     boardTotalPg = 50;
     ctid = "321"  # 공지 기본 id
     ptype = "공지"
 
     if bbs_Id == "B0000111":
         ptype = "공지"
-        boardTotalPg = 50
+        # boardTotalPg = 50
+        boardTotalPg = 2
         ctid = "321"  # 공지 기본 id
     elif bbs_Id == "B0000002":
         ptype = "회사소식"
@@ -360,18 +377,26 @@ def crawllingStart():
      totPg = makePageNum(i,ctid)
      addTot = addTot + totPg
      unique_list = list(set(addTot))
-     print(f"총 개수: {len(unique_list)}")
+     print(f"총 게시물 번호 개수: {len(unique_list)}")
 
-    # 템프 로긴후 지정 번호만 크롤링
-    # response = session.post(LOGIN_URL, data=login_payload)
-    # unique_list = [4110,4109,4108,4107,4106]
-    for i in range(0, len(unique_list)):
-        data = captBoard(unique_list[i], ctid, bbs_Id)
-        fileNm = ptype + "_" + pdate[:10] + ".txt"
-        cleaned_data = clean_newlines(data)
-        # 파일 경로 생성
-        filepath = data_dir / fileNm
-        makeTxt(cleaned_data, filepath)
+     # 게시글 크롤링 및 파일 저장
+     for doc_number in unique_list:
+         data = captBoard(doc_number, ctid, bbs_Id)
+
+         if data and '게시일시' in data:
+             # 파일명을 위한 날짜 부분만 추출 (YYYY-MM-DD)
+             # 예: '2025-11-12 10:00:00' 에서 '2025-11-12' 추출
+             file_date = data['게시일시'][:10]
+
+             # 기본 파일 경로 베이스 생성 (확장자 .txt 제외)
+             # 예: /data/공지/공지_2025-11-12
+             file_base_name = f"{ptype}_{file_date}"
+             filepath_base = data_dir / file_base_name
+
+             cleaned_data = clean_newlines(data)
+
+             # makeTxt 함수에서 중복 처리 및 저장
+             makeTxt(cleaned_data, str(filepath_base))
 
 
 if __name__ == "__main__":

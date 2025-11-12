@@ -194,20 +194,28 @@ def get_answer(qa, db, query: str):
     # 4. 문서 검색: invoke(query, config={...}) 패턴을 사용
     docs = dynamic_retriever.invoke(query, config=config_for_invoke)
 
+    context_parts = []
     # 5. 디버깅용: 검색된 context 간단 출력
     print("\n🔎 검색된 문서(요약):")
     for i, d in enumerate(docs, 1):
         title = d.metadata.get("title", "제목 없음")
-        date = d.metadata.get("date", "날짜 없음")
+        date_str = conv_timestamp(d.metadata.get("date", "날짜 없음"))
+        # date = d.metadata.get("date", "날짜 없음")
         source = d.metadata.get("source", "출처 없음")
         snippet = d.page_content[:200].replace("\n", " ")
-        print(f"  [{i}] {title} / {date} / {source}\n       {snippet}...\n")
+        print(f"  [{i}] {title} / {date_str} / {source}\n       {snippet}...\n")
+        context_part = (
+                d.page_content +
+                f" (제목: {d.metadata.get('title', 'N/A')}, 게시일: {date_str})"
+        )
+        context_parts.append(context_part)
 
     # 6. LLM 답변 생성
     # 6-1. 검색된 문서들을 하나의 컨텍스트 문자열로 합치기
-    context = "\n\n---\n\n".join(
-        [d.page_content + f" (제목: {d.metadata.get('title', 'N/A')}, 게시일: {d.metadata.get('date', 'N/A')})" for d in
-         docs])
+    # context = "\n\n---\n\n".join(
+    #     [d.page_content + f" (제목: {d.metadata.get('title', 'N/A')}, 게시일: {date_str})" for d in
+    #      docs])
+    context = "\n\n---\n\n".join(context_parts)
 
     # 6-2. 프롬프트 템플릿에 컨텍스트와 질문을 채우기
     final_prompt = PROMPT_TEMPLATE.format(context=context, question=query)
@@ -243,13 +251,31 @@ def main():
 
             print("\n📚 참고 문서 목록:")
             for i, d in enumerate(docs, 1):
+                date_str = '알 수 없음'
+                date_str = conv_timestamp(d.metadata.get('date', None))
+                # raw_timestamp = d.metadata.get('date', None)
+                # date_str = '알 수 없음'
+                # if isinstance(raw_timestamp, (int, float)) and raw_timestamp > 0:
+                #     try:
+                #         # 타임스탬프를 datetime 객체로 변환하고 원하는 형식으로 포맷팅
+                #         date_str = datetime.fromtimestamp(raw_timestamp).strftime('%Y-%m-%d')
+                #     except Exception:
+                #         date_str = '변환 오류'
                 print(
-                    f"  [{i}] 제목: {d.metadata.get('title', '알 수 없음')} / 날짜: {d.metadata.get('date', '알 수 없음')} / 출처: {d.metadata.get('source', '알 수 없음')}")
+                    f"  [{i}] 제목: {d.metadata.get('title', '알 수 없음')} / 날짜: {date_str} / 출처: {d.metadata.get('source', '알 수 없음')}")
 
         except KeyboardInterrupt:
             print("\n👋 종료합니다.")
             break
 
-
+def conv_timestamp(timestamp):
+    date_str = '알 수 없음'
+    if isinstance(timestamp, (int, float)) and timestamp > 0:
+        try:
+            # 타임스탬프를 datetime 객체로 변환하고 원하는 형식으로 포맷팅
+            date_str = datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d')
+        except Exception:
+            date_str = '변환 오류'
+    return date_str
 if __name__ == "__main__":
     main()
