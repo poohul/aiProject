@@ -1,12 +1,13 @@
-# chatbot_fixed_v5.py (제목 필터를 title 메타데이터 필드로 직접 타겟팅)
+# chatbot_fixed_v6.py (제목 필터를 Python에서 후처리)
 import re
 from typing import Dict, Any, List, Optional, Union
 from commonUtil.timeCheck import logging_time
-from datetime import datetime
-import copy
+from datetime import datetime, timezone
+import time  # time 모듈은 datetime 객체를 타임스탬프로 변환하는 데 사용됩니다.
 
 # ---------- 전역 설정 (토큰 기반 분할 기준) ----------
 DB_FOLDER = "./chroma_db3"  # -- 기본은 ./chroma_db2
+V_Kwargs = 10
 # ----------------------------------------------------
 
 # --- Imports: try newest, fallback to older packages if necessary ---
@@ -73,7 +74,7 @@ def create_qa_chain():
     db = load_vector_db()
 
     # retriever는 기본 k=10 설정만 가진 상태로 생성
-    retriever = db.as_retriever(search_kwargs={"k": 10})
+    retriever = db.as_retriever(search_kwargs={"k": V_Kwargs})
     llm = load_llm()
 
     # (map_prompt, combine_prompt 생략 - 기존과 동일)
@@ -110,38 +111,41 @@ def create_qa_chain():
     return qa, db, retriever
 
 
-# ---------- 질문에서 필터 조건 추출 (핵심 로직 수정) ----------
+# ---------- 질문에서 필터 조건 추출 (수정: 제목 키워드만 별도 반환) ----------
 
-def extract_chroma_filter(query: str) -> Union[Dict[str, Any]]:
+def extract_chroma_filter(query: str) -> tuple[Union[Dict[str, Any], None], Union[str, None]]:
     """
-    사용자 쿼리에서 ChromaDB 검색을 위한 필터링 인자(kwargs)를 추출합니다.
-    제목 검색 요청 시 'title' 메타데이터 필드를 직접 타겟팅하도록 수정되었습니다.
+    사용자 쿼리에서 ChromaDB 검색을 위한 필터링 인자와 제목 키워드를 추출합니다.
+
+    Returns:
+        tuple: (search_kwargs, title_keyword)
+            - search_kwargs: ChromaDB에서 사용할 필터 (날짜 필터만 포함)
+            - title_keyword: 제목에서 검색할 키워드 (Python 후처리용)
     """
 
     # 1. 필터 조건들을 저장할 리스트 초기화
     where_conditions: List[Dict[str, Any]] = []
     search_kwargs: Dict[str, Any] = {}
+    title_keyword = None
 
-    # --- A. 제목 필터링 로직: '제목 xx 포함' 패턴 (수정됨) ---
+    # --- A. 제목 필터링 로직: '제목 xx 포함' 패턴 (수정: 키워드만 추출) ---
     title_pattern = re.search(r"(제목|타이틀)[^\s]*\s*(?:(?:에|이)?\s*(?:포함된|있는)?\s*|.*?\s*)\s*([^\s]+)", query)
     if title_pattern:
         keyword = title_pattern.group(2).strip()
         if keyword:
-            # 💥 수정: where_document 대신, title 메타데이터 필드를 $contains로 직접 필터링 시도
-            # 이렇게 하면 제목 필드에만 해당 키워드가 포함된 문서를 찾도록 요청합니다.
-            where_conditions.append({"title": {"$contains": keyword}})
-
-            # 참고: ChromaDB는 string metadata의 부분 문자열 $contains를 완벽하게 지원하지 않을 수 있지만,
-            # 사용자 요구사항을 충족하기 위한 최선의 구현입니다.
+            # ✅ 수정: ChromaDB 필터에 추가하지 않고, 반환용 변수에만 저장
+            title_keyword = keyword
+            print(f"🔍 제목 키워드 감지: '{keyword}' (Python 후처리 예정)")
 
     # --- B. 날짜 필터링 로직: 'YYYY-MM-DD' 형식의 메타데이터 'date' 필드에 적용 ---
 
     # 패턴 1: 'YYYY년 이후' / 'YYYY년도 이후'
     after_year_pattern = re.search(r"(\d{4})년(?:도)?\s*이후", query)
     if after_year_pattern:
-        year = after_year_pattern.group(1)
-        # 해당 년도의 시작일(YYYY-01-01) $gte (크거나 같다) 조건
-        where_conditions.append({"date": {"$gte": f"{year}-01-01"}})
+        year = int(after_year_pattern.group(1))
+        start_date_utc = datetime(year, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
+        start_timestamp = start_date_utc.timestamp()
+        where_conditions.append({"date": {"$gte": start_timestamp}})
 
     # 패턴 2: 'YYYY년 MM월 내' / 'YYYY년 MM월까지' (해당 월의 마지막 날짜 $lt)
     within_month_pattern = re.search(r"(\d{4})년\s*(\d{1,2})월\s*(?:이내|내|까지)", query)
@@ -149,58 +153,90 @@ def extract_chroma_filter(query: str) -> Union[Dict[str, Any]]:
         year = int(within_month_pattern.group(1))
         month = int(within_month_pattern.group(2))
 
-        # 다음 달의 시작 날짜를 구해서 $lt (작다) 조건을 사용 (해당 월 포함)
+        # 1. 다음 달의 시작 날짜를 구합니다.
         if month == 12:
-            end_date = f"{year + 1}-01-01"
+            next_month_start = datetime(year + 1, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
         else:
-            end_date = f"{year}-{month + 1:02d}-01"
+            next_month_start = datetime(year, month + 1, 1, 0, 0, 0, tzinfo=timezone.utc)
 
-        # 다음 달 1일 미만 $lt 조건
-        where_conditions.append({"date": {"$lt": end_date}})
+        # 2. 해당 날짜를 유닉스 타임스탬프(초)로 변환합니다.
+        end_timestamp_exclusive = next_month_start.timestamp()
 
-    # --- C. 최종 필터 구조 조립 ---
+        # 3. 숫자 값으로 $lt (작다, 미만) 조건을 적용합니다.
+        where_conditions.append({"date": {"$lt": end_timestamp_exclusive}})
+
+    # --- C. 최종 필터 구조 조립 (날짜 필터만) ---
 
     if where_conditions:
         if len(where_conditions) == 1:
-            # 조건이 하나일 경우: $and 없이 단일 필터만 사용 (ChromaDB 오류 방지)
+            # 조건이 하나일 경우: $and 없이 단일 필터만 사용
             search_kwargs["where"] = where_conditions[0]
         else:
             # 조건이 두 개 이상일 경우: $and로 묶어서 사용
             search_kwargs["where"] = {"$and": where_conditions}
 
-    # 최종 필터 반환 (where만 포함될 수 있음)
-    return search_kwargs if search_kwargs else None
+    # 최종 필터와 제목 키워드 반환
+    return (search_kwargs if search_kwargs else None, title_keyword)
 
 
 # ---------- 답변 생성 (invoke 사용) ----------
 @logging_time
 def get_answer(qa, db, query: str):
-    # 1. 질문에서 메타데이터 필터를 추출
-    metadata_filter = extract_chroma_filter(query)
+    # 1. 질문에서 메타데이터 필터와 제목 키워드를 추출
+    metadata_filter, title_keyword = extract_chroma_filter(query)
 
     # 2. 검색 인자 설정 (기본 k=10)
-    current_search_kwargs = {"k": 10}
+    current_k = V_Kwargs
 
-    # invoke 메서드 사용을 위해 필터를 config 딕셔너리로 래핑
-    config_for_invoke = {"configurable": metadata_filter} if metadata_filter else {}
+    # 3. 문서 검색: ChromaDB의 raw API를 사용하여 날짜 필터링만 적용
+    try:
+        if metadata_filter and 'where' in metadata_filter:
+            # 날짜 필터가 있는 경우
+            where_condition = metadata_filter['where']
+            print(f"✅ ChromaDB 날짜 필터링: K={current_k}, Where={where_condition}")
+            docs = db.similarity_search(
+                query=query,
+                k=current_k,
+                filter=where_condition
+            )
+        else:
+            # 필터가 없는 경우: 유사도 검색만 수행
+            docs = db.similarity_search(
+                query=query,
+                k=current_k
+            )
 
-    if metadata_filter:
-        # 이 로그 메시지는 실제로 실행될 때만 나타납니다.
-        print(f"✅ 메타데이터 필터 적용 (invoke config): {metadata_filter}")
+    except Exception as e:
+        # ChromaDB 검색 오류 발생 시
+        print(f"⚠️ ChromaDB 검색 오류 발생. 필터 없이 재시도: {e}")
+        docs = db.similarity_search(query=query, k=current_k)
 
-    # 3. 새로운 search_kwargs를 가진 동적 retriever 생성 (k=10만 포함)
-    dynamic_retriever = db.as_retriever(search_kwargs=current_search_kwargs)
+    # 4. ✅ 제목 키워드로 Python에서 후처리 필터링 (대소문자 구분 없이)
+    if title_keyword:
+        original_count = len(docs)
+        # 대소문자 구분 없이 검색하고, 공백 제거 후 비교
+        keyword_lower = title_keyword.lower().strip()
+        filtered_docs = []
+        for d in docs:
+            title = d.metadata.get('title', '').lower().strip()
+            if keyword_lower in title:
+                filtered_docs.append(d)
+            else:
+                # 디버깅: 필터링된 제목 출력
+                print(f"  ❌ 제외된 제목: '{d.metadata.get('title', '')}' (키워드 '{title_keyword}' 없음)")
+        docs = filtered_docs
+        print(f"🔍 제목 '{title_keyword}' 필터 적용: {original_count}개 → {len(docs)}개 문서")
 
-    # 4. 문서 검색: invoke(query, config={...}) 패턴을 사용
-    docs = dynamic_retriever.invoke(query, config=config_for_invoke)
+    # 5. 검색된 문서가 없는 경우 조기 반환
+    if not docs:
+        return "검색 조건에 맞는 문서를 찾을 수 없습니다.", []
 
     context_parts = []
-    # 5. 디버깅용: 검색된 context 간단 출력
+    # 6. 디버깅용: 검색된 context 간단 출력
     print("\n🔎 검색된 문서(요약):")
     for i, d in enumerate(docs, 1):
         title = d.metadata.get("title", "제목 없음")
         date_str = conv_timestamp(d.metadata.get("date", "날짜 없음"))
-        # date = d.metadata.get("date", "날짜 없음")
         source = d.metadata.get("source", "출처 없음")
         snippet = d.page_content[:200].replace("\n", " ")
         print(f"  [{i}] {title} / {date_str} / {source}\n       {snippet}...\n")
@@ -210,17 +246,11 @@ def get_answer(qa, db, query: str):
         )
         context_parts.append(context_part)
 
-    # 6. LLM 답변 생성
-    # 6-1. 검색된 문서들을 하나의 컨텍스트 문자열로 합치기
-    # context = "\n\n---\n\n".join(
-    #     [d.page_content + f" (제목: {d.metadata.get('title', 'N/A')}, 게시일: {date_str})" for d in
-    #      docs])
+    # 7. LLM 답변 생성
     context = "\n\n---\n\n".join(context_parts)
-
-    # 6-2. 프롬프트 템플릿에 컨텍스트와 질문을 채우기
     final_prompt = PROMPT_TEMPLATE.format(context=context, question=query)
 
-    # 6-3. LLM에 직접 질문 (QA 체인 대신 LLM만 호출)
+    # LLM에 직접 질문
     llm = load_llm()
     try:
         response = llm.invoke(final_prompt)
@@ -232,7 +262,6 @@ def get_answer(qa, db, query: str):
 # ---------- 메인 (기존과 동일) ----------
 def main():
     print("🤖 게시판 기반 챗봇 (Ctrl+C 로 종료)\n")
-    # qa, db, retriever를 모두 받도록 수정
     qa, db, retriever = create_qa_chain()
 
     while True:
@@ -241,9 +270,6 @@ def main():
             if not query:
                 continue
 
-            # get_answer 함수가 동적으로 retriever를 사용하도록 수정했으므로,
-            # 여기서는 docs 검색 및 filter_by_title 호출 로직을 제거하고
-            # get_answer에 db 객체를 전달합니다.
             response, docs = get_answer(qa, db, query)
 
             # response는 LLM의 최종 답변, docs는 검색된 문서 목록
@@ -251,22 +277,14 @@ def main():
 
             print("\n📚 참고 문서 목록:")
             for i, d in enumerate(docs, 1):
-                date_str = '알 수 없음'
                 date_str = conv_timestamp(d.metadata.get('date', None))
-                # raw_timestamp = d.metadata.get('date', None)
-                # date_str = '알 수 없음'
-                # if isinstance(raw_timestamp, (int, float)) and raw_timestamp > 0:
-                #     try:
-                #         # 타임스탬프를 datetime 객체로 변환하고 원하는 형식으로 포맷팅
-                #         date_str = datetime.fromtimestamp(raw_timestamp).strftime('%Y-%m-%d')
-                #     except Exception:
-                #         date_str = '변환 오류'
                 print(
                     f"  [{i}] 제목: {d.metadata.get('title', '알 수 없음')} / 날짜: {date_str} / 출처: {d.metadata.get('source', '알 수 없음')}")
 
         except KeyboardInterrupt:
             print("\n👋 종료합니다.")
             break
+
 
 def conv_timestamp(timestamp):
     date_str = '알 수 없음'
@@ -277,5 +295,7 @@ def conv_timestamp(timestamp):
         except Exception:
             date_str = '변환 오류'
     return date_str
+
+
 if __name__ == "__main__":
     main()
