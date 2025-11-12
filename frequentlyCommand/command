@@ -4,4 +4,4 @@ pip list --format=freeze > requirements.txt
 //설치
 pip install -r requirements.txt
 //크롬 디비 삭제
-rm -r -fo ./chroma_db2
+rm -r -fo ./chroma_db3

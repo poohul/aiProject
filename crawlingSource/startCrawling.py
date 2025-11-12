@@ -11,7 +11,7 @@ BASE_URL = "https://km.kyobodts.co.kr"  # 실제 사이트 URL로 변경하세�
 LOGIN_URL = f"{BASE_URL}/j_spring_security_check"
 
 YOUR_USERNAME = "jby1303"  # 여기에 실제 로그인 아이디 입력
-YOUR_PASSWORD = "dbswlsqo22@"  # 여기에 실제 로그인 비밀번호 입력
+YOUR_PASSWORD = "dbswlsqo3#"  # 여기에 실제 로그인 비밀번호 입력
 # YOUR_PASSWORD = "dbswlsqo22@1"  # 여기에 실제 로그인 비밀번호 입력
 # --- requests.Session() 사용 ---
 # requests.Session()을 사용하면 로그인 후 생성되는 쿠키(세션 정보)를

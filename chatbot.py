@@ -2,7 +2,9 @@
 import re
 from typing import List
 from commonUtil.timeCheck import logging_time
-
+# ---------- 전역 설정 (토큰 기반 분할 기준) ----------
+DB_FOLDER = "./chroma_db3" #-- 기본은 ./chroma_db2
+# ----------------------------------------------------
 
 # --- Imports: try newest, fallback to older packages if necessary ---
 try:
@@ -46,7 +48,7 @@ PROMPT_TEMPLATE = """당신은 회사 게시판의 문서들을 분석하는 AI 
 """
 
 # ---------- 벡터 DB 로드 ----------
-def load_vector_db(persist_dir: str = "./chroma_db2"):
+def load_vector_db(persist_dir: str = DB_FOLDER):
     embeddings = HuggingFaceEmbeddings(model_name="jhgan/ko-sroberta-multitask")
     db = Chroma(persist_directory=persist_dir, embedding_function=embeddings)
     return db
@@ -63,7 +65,7 @@ def load_llm():
 # ---------- QA 체인 생성 ----------
 def create_qa_chain():
     db = load_vector_db()
-    retriever = db.as_retriever(search_kwargs={"k": 5})
+    retriever = db.as_retriever(search_kwargs={"k": 10})
     llm = load_llm()
 
     # map_prompt / combine_prompt 을 PromptTemplate 으로 명시
