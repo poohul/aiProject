@@ -12,7 +12,9 @@ from reranker import rerank_documents
 # ---------- 전역 설정 (토큰 기반 분할 기준) ----------
 DB_FOLDER = "./chroma_db3"  # -- 기본은 ./chroma_db2
 # V_Kwargs = 10 # -- 기존 설정 대신 K 확장 설정 사용
-V_MODEL_NAME = "llama3.2:3b"
+# V_MODEL_NAME = "llama3.2:3b"
+V_MODEL_NAME = "llama3.1:8b"
+
 # ----------------------------------------------------
 
 # ---------- ✅ Reranking 관련 전역 설정 추가 ----------

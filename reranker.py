@@ -4,6 +4,9 @@ from sentence_transformers import CrossEncoder
 # 재순위화 모델을 전역 변수로 저장 (메모리에서 한 번만 로드)
 RERANKER_MODEL = None
 RERANKER_NAME = 'cross-encoder/ms-marco-TinyBERT-L-2'
+# RERANKER_NAME = './custom_kyoboDTS_bbs_reranker'
+# RERANKER_NAME = 'C:/Users/yjb/PycharmProjects/aiProject/custom_kyoboDTS_bbs_reranker'
+
 
 
 def load_reranker_model():
